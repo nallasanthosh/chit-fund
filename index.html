@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="te">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>చిట్టీ మేనేజర్</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+Telugu:wght@500;700;900&family=Noto+Sans+Telugu:wght@400;500;600;700&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #F2E9D4;
+    --paper-light: #FBF5E7;
+    --cover-maroon: #7A2426;
+    --cover-maroon-dark: #5E1A1C;
+    --thread-gold: #C99A3A;
+    --thread-gold-light: #E4C476;
+    --paid: #2F6F5E;
+    --paid-bg: #E4EFEA;
+    --unpaid: #A13D2B;
+    --unpaid-bg: #F6E6DF;
+    --ink: #2B211B;
+    --ink-soft: #6B5D4F;
+    --line: #D8C9A8;
+    --whatsapp: #25D366;
+    --whatsapp-dark: #1DA851;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Noto Sans Telugu', sans-serif;
+    min-height: 100vh;
+    overscroll-behavior-y: none;
+  }
+
+  #app {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    background: var(--paper);
+    padding-bottom: 100px;
+  }
+
+  .header {
+    background: var(--cover-maroon);
+    background-image: linear-gradient(180deg, var(--cover-maroon) 0%, var(--cover-maroon-dark) 100%);
+    padding: 24px 20px 18px;
+    position: relative;
+    border-bottom: 6px solid var(--thread-gold);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header::after {
+    content: "";
+    position: absolute;
+    bottom: -6px; left: 0; right: 0; height: 6px;
+    background-image: repeating-linear-gradient(90deg, var(--paper) 0 8px, transparent 8px 16px);
+  }
+  .header-text h1 {
+    font-family: 'Noto Serif Telugu', serif;
+    font-weight: 900;
+    color: var(--paper-light);
+    font-size: 24px;
+    margin: 0 0 3px;
+  }
+  .header-text p {
+    color: var(--thread-gold-light);
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .back-btn {
+    background: rgba(255,255,255,0.15);
+    border: none;
+    border-radius: 8px;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    cursor: pointer;
+    color: var(--paper-light);
+    flex-shrink: 0;
+  }
+
+  /* ---- Reminder banner ---- */
+  .reminder-banner {
+    margin: 16px 16px 0;
+    background: var(--whatsapp);
+    border-radius: 12px;
+    padding: 14px 16px;
+    color: #fff;
+  }
+  .reminder-banner .rb-title {
+    font-weight: 700;
+    font-size: 15px;
+    margin-bottom: 10px;
+  }
+  .reminder-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.18);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+  }
+  .reminder-row:last-child { margin-bottom: 0; }
+  .reminder-row .rr-name { font-size: 14px; font-weight: 700; }
+  .reminder-row .rr-sub { font-size: 12px; opacity: 0.9; }
+  .rr-send-btn {
+    background: #fff;
+    color: var(--whatsapp-dark);
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: 700;
+    font-family: 'Noto Sans Telugu', sans-serif;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* ---- Group list ---- */
+  .list { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .empty-state { text-align: center; padding: 60px 24px; color: var(--ink-soft); }
+  .empty-state .big-emoji { font-size: 40px; margin-bottom: 10px; }
+  .empty-state p { font-size: 15px; line-height: 1.6; margin: 4px 0; }
+
+  .group-card {
+    background: var(--paper-light);
+    border-radius: 4px;
+    padding: 16px;
+    position: relative;
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 4px rgba(43,33,27,0.08);
+    cursor: pointer;
+  }
+  .group-card::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 20px; right: 20px; height: 0;
+    border-top: 2px dashed var(--line);
+  }
+  .group-top { display: flex; justify-content: space-between; align-items: flex-start; margin-top: 6px; }
+  .group-name { font-size: 17px; font-weight: 700; color: var(--ink); }
+  .group-sub { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; }
+  .group-month-chip {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 20px;
+    background: var(--thread-gold-light);
+    color: var(--cover-maroon-dark);
+    white-space: nowrap;
+  }
+  .group-pending {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--unpaid);
+    font-weight: 600;
+  }
+  .group-pending.all-paid { color: var(--paid); }
+
+  /* ---- New group button (in-flow, not fixed, so it's always reachable on mobile) ---- */
+  .home-action-bar { padding: 16px 16px 0; }
+  .new-group-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--cover-maroon);
+    color: var(--paper-light);
+    border: 2px solid var(--thread-gold);
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    font-family: 'Noto Sans Telugu', sans-serif;
+    cursor: pointer;
+  }
+
+  /* ---- Inline form panel (not a fixed overlay, so it can't end up off-screen) ---- */
+  .inline-panel {
+    background: var(--paper-light);
+    border: 2px solid var(--thread-gold);
+    border-radius: 14px;
+    margin: 14px 16px 0;
+    padding: 18px 18px 20px;
+  }
+  .sheet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .sheet-header h2 { font-family: 'Noto Serif Telugu', serif; font-size: 19px; margin: 0; color: var(--cover-maroon); }
+  .close-btn { background: none; border: none; font-size: 22px; color: var(--ink-soft); cursor: pointer; padding: 4px 8px; }
+
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 14px; font-weight: 600; color: var(--ink-soft); margin-bottom: 6px; }
+  .field input {
+    width: 100%; padding: 12px 14px; font-size: 16px;
+    font-family: 'Noto Sans Telugu', sans-serif;
+    border: 1.5px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink);
+  }
+  .field-row { display: flex; gap: 10px; }
+  .field-row .field { flex: 1; }
+
+  .save-btn {
+    width: 100%; padding: 15px;
+    background: var(--cover-maroon); color: var(--paper-light);
+    border: none; border-radius: 10px; font-size: 17px; font-weight: 700;
+    font-family: 'Noto Sans Telugu', sans-serif; cursor: pointer; margin-top: 6px;
+  }
+  .delete-btn {
+    width: 100%; padding: 13px; background: none; color: var(--unpaid);
+    border: 1.5px solid var(--unpaid); border-radius: 10px; font-size: 15px; font-weight: 600;
+    font-family: 'Noto Sans Telugu', sans-serif; cursor: pointer; margin-top: 10px;
+  }
+
+  /* ---- Group detail ---- */
+  .month-indicator {
+    margin: 16px 16px 0;
+    background: var(--paper-light);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .month-indicator .mi-month {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--cover-maroon);
+  }
+  .month-indicator .mi-sub { font-size: 13px; color: var(--ink-soft); margin-top: 4px; }
+  .month-indicator .mi-amt { font-size: 15px; color: var(--ink); margin-top: 6px; font-weight: 600; }
+
+  .section-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 16px 8px;
+  }
+  .section-title { font-family: 'Noto Serif Telugu', serif; font-size: 16px; font-weight: 700; color: var(--ink); }
+  .link-btn {
+    background: none; border: none; color: var(--cover-maroon);
+    font-weight: 600; font-size: 13.5px; cursor: pointer; text-decoration: underline;
+    font-family: 'Noto Sans Telugu', sans-serif;
+  }
+  .add-member-btn {
+    background: var(--paper-light); border: 1.5px solid var(--cover-maroon);
+    color: var(--cover-maroon); border-radius: 8px; padding: 6px 12px;
+    font-size: 13.5px; font-weight: 700; cursor: pointer;
+    font-family: 'Noto Sans Telugu', sans-serif;
+  }
+
+  .member-row {
+    background: var(--paper-light);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin: 0 16px 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+  }
+  .member-left { flex: 1; min-width: 0; }
+  .member-name { font-size: 15.5px; font-weight: 700; color: var(--ink); }
+  .member-phone { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .member-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .paid-chip {
+    font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 20px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .paid-chip.paid { color: var(--paid); background: var(--paid-bg); }
+  .paid-chip.unpaid { color: var(--unpaid); background: var(--unpaid-bg); }
+  .wa-btn {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--whatsapp);
+    color: #fff; border: none; font-size: 15px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .member-edit-icon {
+    width: 32px; height: 32px; border-radius: 50%; background: #fff;
+    border: 1px solid var(--line); font-size: 14px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ---- Full record grid ---- */
+  .grid-wrap { margin: 0 16px 16px; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-light); }
+  table.record-grid { border-collapse: collapse; font-size: 12.5px; }
+  table.record-grid th, table.record-grid td {
+    border: 1px solid var(--line); padding: 8px 10px; text-align: center; white-space: nowrap;
+  }
+  table.record-grid th { background: var(--thread-gold-light); color: var(--cover-maroon-dark); font-weight: 700; position: sticky; top: 0; }
+  table.record-grid td.name-cell { text-align: left; font-weight: 600; position: sticky; left: 0; background: var(--paper-light); }
+  table.record-grid td.cell-paid { color: var(--paid); font-weight: 700; cursor: pointer; }
+  table.record-grid td.cell-unpaid { color: var(--line); cursor: pointer; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME VIEW -->
+  <div id="home-view">
+    <div class="header">
+      <div class="header-text">
+        <h1>చిట్టీ మేనేజర్</h1>
+        <p>నెలవారీ చిట్టీ చెల్లింపుల రికార్డు</p>
+      </div>
+    </div>
+    <div class="home-action-bar">
+      <button class="new-group-btn" onclick="openGroupSheet(false)">+ కొత్త చిట్టీ గ్రూపు</button>
+    </div>
+
+    <div id="reminder-banner-container"></div>
+    <div class="list" id="groups-list"></div>
+  </div>
+
+  <!-- GROUP DETAIL VIEW -->
+  <div id="group-view" class="hidden">
+    <div class="header">
+      <div class="back-btn" onclick="goHome()">←</div>
+      <div class="header-text">
+        <h1 id="group-title-name"></h1>
+        <p id="group-title-sub"></p>
+      </div>
+    </div>
+
+    <div class="month-indicator">
+      <div class="mi-month" id="mi-month-text"></div>
+      <div class="mi-sub" id="mi-sub-text"></div>
+      <div class="mi-amt" id="mi-amt-text"></div>
+    </div>
+
+    <div class="section-row">
+      <div class="section-title">సభ్యులు</div>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="link-btn" id="toggle-grid-btn" onclick="toggleGrid()">పూర్తి రికార్డు చూడు</button>
+        <button class="add-member-btn" onclick="openMemberSheet()">+ సభ్యుడు</button>
+      </div>
+    </div>
+
+    <div id="members-list"></div>
+    <div id="grid-container" class="hidden"></div>
+
+    <div style="padding: 8px 16px 20px;">
+      <button class="link-btn" onclick="openGroupSheet(true)">ఈ గ్రూపు వివరాలు మార్చు</button>
+    </div>
+  </div>
+
+  <!-- GROUP FORM PANEL (shared by home view "new group" and group view "edit group") -->
+  <div class="inline-panel hidden" id="group-panel">
+    <div class="sheet-header">
+      <h2 id="group-sheet-title">కొత్త చిట్టీ గ్రూపు</h2>
+      <button class="close-btn" onclick="closeGroupSheet()">✕</button>
+    </div>
+    <div class="field">
+      <label>గ్రూపు పేరు</label>
+      <input type="text" id="g-name" placeholder="ఉదా: 20000 చిట్టీ">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>నెలవారీ మొత్తం (₹)</label>
+        <input type="number" id="g-amount" inputmode="decimal" placeholder="20000">
+      </div>
+      <div class="field">
+        <label>మొత్తం నెలలు</label>
+        <input type="number" id="g-months" inputmode="numeric" placeholder="20">
+      </div>
+    </div>
+    <div class="field">
+      <label>మొదటి నెల</label>
+      <input type="month" id="g-start">
+    </div>
+    <button class="save-btn" onclick="saveGroup()">భద్రపరచు</button>
+    <button class="delete-btn hidden" id="delete-group-btn" onclick="deleteCurrentGroup()">ఈ గ్రూపు తొలగించు</button>
+  </div>
+
+  <!-- MEMBER FORM PANEL -->
+  <div class="inline-panel hidden" id="member-panel">
+    <div class="sheet-header">
+      <h2 id="member-sheet-title">సభ్యుడిని చేర్చండి</h2>
+      <button class="close-btn" onclick="closeMemberSheet()">✕</button>
+    </div>
+    <div class="field">
+      <label>పేరు</label>
+      <input type="text" id="m-name" placeholder="సభ్యుడి పేరు">
+    </div>
+    <div class="field">
+      <label>వాట్సాప్ నంబర్ (ఐచ్ఛికం)</label>
+      <input type="tel" id="m-phone" placeholder="10 అంకెలు">
+    </div>
+    <button class="save-btn" onclick="saveMember()">భద్రపరచు</button>
+    <button class="delete-btn hidden" id="delete-member-btn" onclick="deleteCurrentMember()">ఈ సభ్యుడిని తొలగించు</button>
+  </div>
+
+</div>
+
+<script>
+let data = { groups: [] };
+let currentGroupId = null;
+let editingGroupId = null;
+let editingMemberId = null;
+let gridVisible = false;
+
+const STORAGE_KEY = 'chit-fund-data';
+
+async function loadData() {
+  try {
+    if (window.storage) {
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if (result && result.value) data = JSON.parse(result.value);
+    } else {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) data = JSON.parse(raw);
+    }
+    if (!data.groups) data.groups = [];
+  } catch (e) {
+    data = { groups: [] };
+  }
+  renderHome();
+}
+
+async function saveData() {
+  try {
+    if (window.storage) {
+      await window.storage.set(STORAGE_KEY, JSON.stringify(data), false);
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+  } catch (e) {
+    console.error('Storage error', e);
+  }
+}
+
+function fmtMoney(n) {
+  return '₹' + Math.round(n).toLocaleString('en-IN');
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+function currentYYYYMM() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+
+function currentMonthNumber(group) {
+  const [sy, sm] = group.startMonth.split('-').map(Number);
+  const [cy, cm] = currentYYYYMM().split('-').map(Number);
+  let n = (cy - sy) * 12 + (cm - sm) + 1;
+  if (n < 1) n = 1;
+  if (n > group.totalMonths) n = group.totalMonths;
+  return n;
+}
+
+function monthLabel(group) {
+  return currentMonthNumber(group) + ' / ' + group.totalMonths;
+}
+
+function getGroup(id) { return data.groups.find(g => g.id === id); }
+function getMember(group, id) { return group.members.find(m => m.id === id); }
+
+function cleanPhone(phone) {
+  let digits = (phone || '').replace(/[^0-9]/g, '');
+  if (digits.length === 10) digits = '91' + digits;
+  return digits;
+}
+
+function buildWhatsAppMessage(memberName, monthNum, amount) {
+  return `నమస్కారం ${memberName} గారు, ఇది మీ చిట్టీ ${monthNum}వ నెల. మొత్తం: ${fmtMoney(amount)}. దయచేసి చెల్లించండి. ధన్యవాదాలు 🙏`;
+}
+
+function sendWhatsApp(groupId, memberId, event) {
+  if (event) event.stopPropagation();
+  const group = getGroup(groupId);
+  const member = getMember(group, memberId);
+  if (!member.phone) {
+    const entered = prompt(member.name + ' వాట్సాప్ నంబర్ ఇవ్వండి (10 అంకెలు):');
+    if (!entered) return;
+    member.phone = entered.trim();
+    saveData();
+  }
+  const monthNum = currentMonthNumber(group);
+  const digits = cleanPhone(member.phone);
+  const text = encodeURIComponent(buildWhatsAppMessage(member.name, monthNum, group.amount));
+  window.open(`https://wa.me/${digits}?text=${text}`, '_blank');
+}
+
+/* ---------- HOME ---------- */
+
+function renderHome() {
+  const listEl = document.getElementById('groups-list');
+
+  renderReminderBanner();
+
+  if (data.groups.length === 0) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <div class="big-emoji">📖</div>
+        <p>ఇంకా చిట్టీ గ్రూపులు లేవు.</p>
+        <p>కింద ఉన్న + బటన్ నొక్కి మొదటి గ్రూపు చేర్చండి.</p>
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = data.groups.map(g => {
+    const monthNum = currentMonthNumber(g);
+    const pendingCount = g.members.filter(m => !(m.payments && m.payments[monthNum] && m.payments[monthNum].paid)).length;
+    return `
+      <div class="group-card" onclick="openGroup('${g.id}')">
+        <div class="group-top">
+          <div>
+            <div class="group-name">${escapeHtml(g.name)}</div>
+            <div class="group-sub">${fmtMoney(g.amount)} / నెల &nbsp;·&nbsp; ${g.members.length} మంది సభ్యులు</div>
+          </div>
+          <div class="group-month-chip">${monthLabel(g)}వ నెల</div>
+        </div>
+        <div class="group-pending ${pendingCount === 0 ? 'all-paid' : ''}">
+          ${g.members.length === 0 ? 'సభ్యులు చేర్చండి' : (pendingCount === 0 ? 'అందరూ ఈ నెల చెల్లించారు ✓' : pendingCount + ' మంది ఈ నెల చెల్లించలేదు')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderReminderBanner() {
+  const container = document.getElementById('reminder-banner-container');
+  const today = new Date();
+  if (today.getDate() !== 4) { container.innerHTML = ''; return; }
+
+  const items = [];
+  data.groups.forEach(g => {
+    const monthNum = currentMonthNumber(g);
+    g.members.forEach(m => {
+      const paidInfo = m.payments && m.payments[monthNum];
+      if (!paidInfo || !paidInfo.paid) {
+        items.push({ groupId: g.id, memberId: m.id, name: m.name, groupName: g.name, monthNum, amount: g.amount });
+      }
+    });
+  });
+
+  if (items.length === 0) { container.innerHTML = ''; return; }
+
+  container.innerHTML = `
+    <div class="reminder-banner">
+      <div class="rb-title">📅 ఈ రోజు 4వ తారీఖు — ఈ నెల చెల్లించాల్సినవారు</div>
+      ${items.map(it => `
+        <div class="reminder-row">
+          <div>
+            <div class="rr-name">${escapeHtml(it.name)}</div>
+            <div class="rr-sub">${escapeHtml(it.groupName)} · ${it.monthNum}వ నెల · ${fmtMoney(it.amount)}</div>
+          </div>
+          <button class="rr-send-btn" onclick="sendWhatsApp('${it.groupId}', '${it.memberId}', event)">వాట్సాప్ పంపు</button>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
+function goHome() {
+  document.getElementById('group-view').classList.add('hidden');
+  document.getElementById('home-view').classList.remove('hidden');
+  document.getElementById('group-panel').classList.add('hidden');
+  document.getElementById('member-panel').classList.add('hidden');
+  currentGroupId = null;
+  renderHome();
+}
+
+/* ---------- GROUP DETAIL ---------- */
+
+function openGroup(id) {
+  currentGroupId = id;
+  gridVisible = false;
+  document.getElementById('home-view').classList.add('hidden');
+  document.getElementById('group-view').classList.remove('hidden');
+  document.getElementById('group-panel').classList.add('hidden');
+  document.getElementById('member-panel').classList.add('hidden');
+  renderGroup();
+}
+
+function renderGroup() {
+  const g = getGroup(currentGroupId);
+  if (!g) { goHome(); return; }
+  const monthNum = currentMonthNumber(g);
+
+  document.getElementById('group-title-name').textContent = g.name;
+  document.getElementById('group-title-sub').textContent = fmtMoney(g.amount) + ' / నెల';
+
+  document.getElementById('mi-month-text').textContent = monthNum + 'వ నెల';
+  document.getElementById('mi-sub-text').textContent = 'మొత్తం ' + g.totalMonths + ' నెలల్లో';
+  document.getElementById('mi-amt-text').textContent = 'ఈ నెల చెల్లించాల్సిన మొత్తం: ' + fmtMoney(g.amount);
+
+  const listEl = document.getElementById('members-list');
+  if (g.members.length === 0) {
+    listEl.innerHTML = `<div class="empty-state"><p>ఇంకా సభ్యులు లేరు. పైన "+ సభ్యుడు" నొక్కండి.</p></div>`;
+  } else {
+    listEl.innerHTML = g.members.map(m => {
+      const paidInfo = m.payments && m.payments[monthNum];
+      const isPaid = paidInfo && paidInfo.paid;
+      return `
+        <div class="member-row">
+          <div class="member-left" onclick="openMemberSheet('${m.id}')">
+            <div class="member-name">${escapeHtml(m.name)}</div>
+            <div class="member-phone">${m.phone ? '📱 ' + escapeHtml(m.phone) : 'ఫోన్ నంబర్ లేదు'}</div>
+          </div>
+          <div class="member-right">
+            ${!isPaid ? `<button class="wa-btn" onclick="sendWhatsApp('${g.id}','${m.id}', event)">💬</button>` : ''}
+            <div class="paid-chip ${isPaid ? 'paid' : 'unpaid'}" onclick="togglePaid('${m.id}', event)">
+              ${isPaid ? '✓ చెల్లించారు' : 'చెల్లించలేదు'}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  renderGrid();
+}
+
+function togglePaid(memberId, event) {
+  if (event) event.stopPropagation();
+  const g = getGroup(currentGroupId);
+  const m = getMember(g, memberId);
+  const monthNum = currentMonthNumber(g);
+  if (!m.payments) m.payments = {};
+  const wasPaid = m.payments[monthNum] && m.payments[monthNum].paid;
+  m.payments[monthNum] = wasPaid ? { paid: false } : { paid: true, date: new Date().toISOString().slice(0, 10) };
+  saveData();
+  renderGroup();
+}
+
+function toggleGrid() {
+  gridVisible = !gridVisible;
+  document.getElementById('toggle-grid-btn').textContent = gridVisible ? 'జాబితా చూడు' : 'పూర్తి రికార్డు చూడు';
+  renderGrid();
+}
+
+function renderGrid() {
+  const container = document.getElementById('grid-container');
+  const membersList = document.getElementById('members-list');
+  if (!gridVisible) { container.classList.add('hidden'); membersList.classList.remove('hidden'); return; }
+  membersList.classList.add('hidden');
+  container.classList.remove('hidden');
+
+  const g = getGroup(currentGroupId);
+  let cols = '';
+  for (let i = 1; i <= g.totalMonths; i++) cols += `<th>${i}</th>`;
+
+  let rows = g.members.map(m => {
+    let cells = '';
+    for (let i = 1; i <= g.totalMonths; i++) {
+      const paidInfo = m.payments && m.payments[i];
+      const isPaid = paidInfo && paidInfo.paid;
+      cells += `<td class="${isPaid ? 'cell-paid' : 'cell-unpaid'}" onclick="toggleGridCell('${m.id}', ${i})">${isPaid ? '✓' : '–'}</td>`;
+    }
+    return `<tr><td class="name-cell">${escapeHtml(m.name)}</td>${cells}</tr>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="grid-wrap">
+      <table class="record-grid">
+        <thead><tr><th>పేరు</th>${cols}</tr></thead>
+        <tbody>${rows || `<tr><td class="name-cell">సభ్యులు లేరు</td></tr>`}</tbody>
+      </table>
+    </div>`;
+}
+
+function toggleGridCell(memberId, monthNum) {
+  const g = getGroup(currentGroupId);
+  const m = getMember(g, memberId);
+  if (!m.payments) m.payments = {};
+  const wasPaid = m.payments[monthNum] && m.payments[monthNum].paid;
+  m.payments[monthNum] = wasPaid ? { paid: false } : { paid: true, date: new Date().toISOString().slice(0, 10) };
+  saveData();
+  renderGrid();
+}
+
+/* ---------- GROUP SHEET ---------- */
+
+function openGroupSheet(editing) {
+  editingGroupId = editing ? currentGroupId : null;
+  const panel = document.getElementById('group-panel');
+  const delBtn = document.getElementById('delete-group-btn');
+  if (editing) {
+    const g = getGroup(currentGroupId);
+    document.getElementById('group-sheet-title').textContent = 'గ్రూపు వివరాలు మార్చు';
+    document.getElementById('g-name').value = g.name;
+    document.getElementById('g-amount').value = g.amount;
+    document.getElementById('g-months').value = g.totalMonths;
+    document.getElementById('g-start').value = g.startMonth;
+    delBtn.classList.remove('hidden');
+  } else {
+    document.getElementById('group-sheet-title').textContent = 'కొత్త చిట్టీ గ్రూపు';
+    document.getElementById('g-name').value = '';
+    document.getElementById('g-amount').value = '';
+    document.getElementById('g-months').value = 20;
+    document.getElementById('g-start').value = currentYYYYMM();
+    delBtn.classList.add('hidden');
+  }
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeGroupSheet() {
+  document.getElementById('group-panel').classList.add('hidden');
+}
+
+async function saveGroup() {
+  const name = document.getElementById('g-name').value.trim();
+  const amount = parseFloat(document.getElementById('g-amount').value);
+  const totalMonths = parseInt(document.getElementById('g-months').value, 10);
+  const startMonth = document.getElementById('g-start').value;
+
+  if (!name) { alert('దయచేసి గ్రూపు పేరు రాయండి'); return; }
+  if (!amount || amount <= 0) { alert('దయచేసి సరైన మొత్తం రాయండి'); return; }
+  if (!totalMonths || totalMonths <= 0) { alert('దయచేసి నెలల సంఖ్య రాయండి'); return; }
+  if (!startMonth) { alert('దయచేసి మొదటి నెల ఎంచుకోండి'); return; }
+
+  if (editingGroupId) {
+    const g = getGroup(editingGroupId);
+    g.name = name; g.amount = amount; g.totalMonths = totalMonths; g.startMonth = startMonth;
+  } else {
+    const newGroup = {
+      id: 'g' + Date.now() + Math.random().toString(36).slice(2, 7),
+      name, amount, totalMonths, startMonth, members: []
+    };
+    data.groups.push(newGroup);
+    currentGroupId = newGroup.id;
+  }
+
+  await saveData();
+  closeGroupSheet();
+  if (document.getElementById('group-view').classList.contains('hidden')) {
+    openGroup(currentGroupId);
+  } else {
+    renderGroup();
+  }
+}
+
+async function deleteCurrentGroup() {
+  if (!confirm('ఈ చిట్టీ గ్రూపును పూర్తిగా తొలగించాలా? ఇందులో ఉన్న సభ్యులు, రికార్డులు అన్నీ పోతాయి.')) return;
+  data.groups = data.groups.filter(g => g.id !== editingGroupId);
+  await saveData();
+  closeGroupSheet();
+  goHome();
+}
+
+/* ---------- MEMBER SHEET ---------- */
+
+function openMemberSheet(memberId) {
+  editingMemberId = memberId || null;
+  const panel = document.getElementById('member-panel');
+  const delBtn = document.getElementById('delete-member-btn');
+  if (memberId) {
+    const g = getGroup(currentGroupId);
+    const m = getMember(g, memberId);
+    document.getElementById('member-sheet-title').textContent = 'సభ్యుడి వివరాలు మార్చు';
+    document.getElementById('m-name').value = m.name;
+    document.getElementById('m-phone').value = m.phone || '';
+    delBtn.classList.remove('hidden');
+  } else {
+    document.getElementById('member-sheet-title').textContent = 'సభ్యుడిని చేర్చండి';
+    document.getElementById('m-name').value = '';
+    document.getElementById('m-phone').value = '';
+    delBtn.classList.add('hidden');
+  }
+  panel.classList.remove('hidden');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function closeMemberSheet() {
+  document.getElementById('member-panel').classList.add('hidden');
+}
+
+async function saveMember() {
+  const name = document.getElementById('m-name').value.trim();
+  const phone = document.getElementById('m-phone').value.trim();
+  if (!name) { alert('దయచేసి పేరు రాయండి'); return; }
+
+  const g = getGroup(currentGroupId);
+  if (editingMemberId) {
+    const m = getMember(g, editingMemberId);
+    m.name = name; m.phone = phone;
+  } else {
+    g.members.push({
+      id: 'm' + Date.now() + Math.random().toString(36).slice(2, 7),
+      name, phone, payments: {}
+    });
+  }
+  await saveData();
+  closeMemberSheet();
+  renderGroup();
+}
+
+async function deleteCurrentMember() {
+  if (!confirm('ఈ సభ్యుడిని తొలగించాలా? వారి చెల్లింపుల రికార్డు కూడా పోతుంది.')) return;
+  const g = getGroup(currentGroupId);
+  g.members = g.members.filter(m => m.id !== editingMemberId);
+  await saveData();
+  closeMemberSheet();
+  renderGroup();
+}
+
+loadData();
+</script>
+</body>
+</html>
