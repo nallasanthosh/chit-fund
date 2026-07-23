@@ -264,6 +264,14 @@
   .member-left { flex: 1; min-width: 0; }
   .member-name { font-size: 15.5px; font-weight: 700; color: var(--ink); }
   .member-phone { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+  .member-amt { font-size: 12.5px; color: var(--ink); margin-top: 2px; font-weight: 600; }
+  .lifted-badge {
+    display: inline-block; font-size: 11px; font-weight: 700; color: var(--cover-maroon-dark);
+    background: var(--thread-gold-light); padding: 2px 8px; border-radius: 10px; margin-top: 4px;
+  }
+  .checkbox-row { display: flex; align-items: center; gap: 10px; }
+  .checkbox-row input[type="checkbox"] { width: 22px; height: 22px; flex-shrink: 0; }
+  .checkbox-row input[type="number"] { flex: 1; }
   .member-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
   .paid-chip {
     font-size: 12.5px; font-weight: 700; padding: 6px 10px; border-radius: 20px; cursor: pointer;
@@ -292,6 +300,7 @@
   table.record-grid td.name-cell { text-align: left; font-weight: 600; position: sticky; left: 0; background: var(--paper-light); }
   table.record-grid td.cell-paid { color: var(--paid); font-weight: 700; cursor: pointer; }
   table.record-grid td.cell-unpaid { color: var(--line); cursor: pointer; }
+  table.record-grid td.cell-lift { background: var(--thread-gold-light) !important; }
 
   .hidden { display: none !important; }
 </style>
@@ -368,11 +377,15 @@
       </div>
     </div>
     <div class="field">
-      <label>మొదటి నెల</label>
+      <label>మొదటి నెల (Starting month)</label>
       <input type="month" id="g-start">
     </div>
-    <button class="save-btn" onclick="saveGroup()">భద్రపరచు</button>
-    <button class="delete-btn hidden" id="delete-group-btn" onclick="deleteCurrentGroup()">ఈ గ్రూపు తొలగించు</button>
+    <div class="field">
+      <label>లిఫ్ట్ తర్వాత నెలవారీ మొత్తం (₹) (Amount after lifting) — ఐచ్ఛికం (optional)</label>
+      <input type="number" id="g-postlift" inputmode="decimal" placeholder="ఉదా: 12000">
+    </div>
+    <button class="save-btn" onclick="saveGroup()">భద్రపరచు (Save)</button>
+    <button class="delete-btn hidden" id="delete-group-btn" onclick="deleteCurrentGroup()">ఈ గ్రూపు తొలగించు (Delete Group)</button>
   </div>
 
   <!-- MEMBER FORM PANEL -->
@@ -386,11 +399,18 @@
       <input type="text" id="m-name" placeholder="సభ్యుడి పేరు">
     </div>
     <div class="field">
-      <label>వాట్సాప్ నంబర్ (ఐచ్ఛికం)</label>
+      <label>వాట్సాప్ నంబర్ (ఐచ్ఛికం) (WhatsApp number, optional)</label>
       <input type="tel" id="m-phone" placeholder="10 అంకెలు">
     </div>
-    <button class="save-btn" onclick="saveMember()">భద్రపరచు</button>
-    <button class="delete-btn hidden" id="delete-member-btn" onclick="deleteCurrentMember()">ఈ సభ్యుడిని తొలగించు</button>
+    <div class="field">
+      <label>లిఫ్ట్ అయ్యారా? (Lifted the chit?)</label>
+      <div class="checkbox-row">
+        <input type="checkbox" id="m-lifted-check" onchange="toggleLiftedField()">
+        <input type="number" id="m-lifted-month" placeholder="ఏ నెలలో? (Which month)" disabled>
+      </div>
+    </div>
+    <button class="save-btn" onclick="saveMember()">భద్రపరచు (Save)</button>
+    <button class="delete-btn hidden" id="delete-member-btn" onclick="deleteCurrentMember()">ఈ సభ్యుడిని తొలగించు (Delete Member)</button>
   </div>
 
 </div>
@@ -462,6 +482,23 @@ function monthLabel(group) {
 function getGroup(id) { return data.groups.find(g => g.id === id); }
 function getMember(group, id) { return group.members.find(m => m.id === id); }
 
+function getRequiredAmount(group, member, monthNum) {
+  if (member.liftedMonth && monthNum > member.liftedMonth && group.postLiftAmount) {
+    return group.postLiftAmount;
+  }
+  return group.amount;
+}
+
+function toggleLiftedField() {
+  const checked = document.getElementById('m-lifted-check').checked;
+  const monthInput = document.getElementById('m-lifted-month');
+  monthInput.disabled = !checked;
+  if (checked && !monthInput.value) {
+    const g = getGroup(currentGroupId);
+    if (g) monthInput.value = currentMonthNumber(g);
+  }
+}
+
 function cleanPhone(phone) {
   let digits = (phone || '').replace(/[^0-9]/g, '');
   if (digits.length === 10) digits = '91' + digits;
@@ -469,7 +506,7 @@ function cleanPhone(phone) {
 }
 
 function buildWhatsAppMessage(memberName, monthNum, amount) {
-  return `నమస్కారం ${memberName} గారు, ఇది మీ చిట్టీ ${monthNum}వ నెల. మొత్తం: ${fmtMoney(amount)}. దయచేసి చెల్లించండి. ధన్యవాదాలు 🙏`;
+  return `నమస్కారం (Hello) ${memberName} గారు, ఇది మీ చిట్టీ ${monthNum}వ నెల (Month ${monthNum}). మొత్తం (Amount): ${fmtMoney(amount)}. దయచేసి చెల్లించండి (Please pay). ధన్యవాదాలు (Thank you) 🙏`;
 }
 
 function sendWhatsApp(groupId, memberId, event) {
@@ -483,8 +520,9 @@ function sendWhatsApp(groupId, memberId, event) {
     saveData();
   }
   const monthNum = currentMonthNumber(group);
+  const amount = getRequiredAmount(group, member, monthNum);
   const digits = cleanPhone(member.phone);
-  const text = encodeURIComponent(buildWhatsAppMessage(member.name, monthNum, group.amount));
+  const text = encodeURIComponent(buildWhatsAppMessage(member.name, monthNum, amount));
   window.open(`https://wa.me/${digits}?text=${text}`, '_blank');
 }
 
@@ -535,7 +573,7 @@ function renderReminderBanner() {
     g.members.forEach(m => {
       const paidInfo = m.payments && m.payments[monthNum];
       if (!paidInfo || !paidInfo.paid) {
-        items.push({ groupId: g.id, memberId: m.id, name: m.name, groupName: g.name, monthNum, amount: g.amount });
+        items.push({ groupId: g.id, memberId: m.id, name: m.name, groupName: g.name, monthNum, amount: getRequiredAmount(g, m, monthNum) });
       }
     });
   });
@@ -586,9 +624,10 @@ function renderGroup() {
   document.getElementById('group-title-name').textContent = g.name;
   document.getElementById('group-title-sub').textContent = fmtMoney(g.amount) + ' / నెల';
 
-  document.getElementById('mi-month-text').textContent = monthNum + 'వ నెల';
-  document.getElementById('mi-sub-text').textContent = 'మొత్తం ' + g.totalMonths + ' నెలల్లో';
-  document.getElementById('mi-amt-text').textContent = 'ఈ నెల చెల్లించాల్సిన మొత్తం: ' + fmtMoney(g.amount);
+  document.getElementById('mi-month-text').textContent = monthNum + 'వ నెల (Month ' + monthNum + ')';
+  document.getElementById('mi-sub-text').textContent = 'మొత్తం ' + g.totalMonths + ' నెలల్లో (out of ' + g.totalMonths + ')';
+  document.getElementById('mi-amt-text').textContent = 'ప్రామాణిక మొత్తం (Standard amount): ' + fmtMoney(g.amount) +
+    (g.postLiftAmount ? ' · లిఫ్ట్ తర్వాత (After lift): ' + fmtMoney(g.postLiftAmount) : '');
 
   const listEl = document.getElementById('members-list');
   if (g.members.length === 0) {
@@ -597,16 +636,19 @@ function renderGroup() {
     listEl.innerHTML = g.members.map(m => {
       const paidInfo = m.payments && m.payments[monthNum];
       const isPaid = paidInfo && paidInfo.paid;
+      const amount = getRequiredAmount(g, m, monthNum);
+      const isLifted = m.liftedMonth && monthNum > m.liftedMonth;
       return `
         <div class="member-row">
           <div class="member-left" onclick="openMemberSheet('${m.id}')">
             <div class="member-name">${escapeHtml(m.name)}</div>
-            <div class="member-phone">${m.phone ? '📱 ' + escapeHtml(m.phone) : 'ఫోన్ నంబర్ లేదు'}</div>
+            <div class="member-phone">${m.phone ? '📱 ' + escapeHtml(m.phone) : 'ఫోన్ నంబర్ లేదు (No number)'}</div>
+            <div class="member-amt">${fmtMoney(amount)} ${isLifted ? '<span class="lifted-badge">లిఫ్ట్ ' + m.liftedMonth + 'వ నెల (Lifted)</span>' : ''}</div>
           </div>
           <div class="member-right">
             ${!isPaid ? `<button class="wa-btn" onclick="sendWhatsApp('${g.id}','${m.id}', event)">💬</button>` : ''}
             <div class="paid-chip ${isPaid ? 'paid' : 'unpaid'}" onclick="togglePaid('${m.id}', event)">
-              ${isPaid ? '✓ చెల్లించారు' : 'చెల్లించలేదు'}
+              ${isPaid ? '✓ చెల్లించారు (Paid)' : 'చెల్లించలేదు (Not Paid)'}
             </div>
           </div>
         </div>`;
@@ -650,7 +692,10 @@ function renderGrid() {
     for (let i = 1; i <= g.totalMonths; i++) {
       const paidInfo = m.payments && m.payments[i];
       const isPaid = paidInfo && paidInfo.paid;
-      cells += `<td class="${isPaid ? 'cell-paid' : 'cell-unpaid'}" onclick="toggleGridCell('${m.id}', ${i})">${isPaid ? '✓' : '–'}</td>`;
+      const isLiftMonth = m.liftedMonth === i;
+      const cls = (isPaid ? 'cell-paid' : 'cell-unpaid') + (isLiftMonth ? ' cell-lift' : '');
+      const content = isLiftMonth ? ('⭐' + (isPaid ? '✓' : '')) : (isPaid ? '✓' : '–');
+      cells += `<td class="${cls}" onclick="toggleGridCell('${m.id}', ${i})">${content}</td>`;
     }
     return `<tr><td class="name-cell">${escapeHtml(m.name)}</td>${cells}</tr>`;
   }).join('');
@@ -682,18 +727,20 @@ function openGroupSheet(editing) {
   const delBtn = document.getElementById('delete-group-btn');
   if (editing) {
     const g = getGroup(currentGroupId);
-    document.getElementById('group-sheet-title').textContent = 'గ్రూపు వివరాలు మార్చు';
+    document.getElementById('group-sheet-title').textContent = 'గ్రూపు వివరాలు మార్చు (Edit Group)';
     document.getElementById('g-name').value = g.name;
     document.getElementById('g-amount').value = g.amount;
     document.getElementById('g-months').value = g.totalMonths;
     document.getElementById('g-start').value = g.startMonth;
+    document.getElementById('g-postlift').value = g.postLiftAmount || '';
     delBtn.classList.remove('hidden');
   } else {
-    document.getElementById('group-sheet-title').textContent = 'కొత్త చిట్టీ గ్రూపు';
+    document.getElementById('group-sheet-title').textContent = 'కొత్త చిట్టీ గ్రూపు (New Group)';
     document.getElementById('g-name').value = '';
     document.getElementById('g-amount').value = '';
     document.getElementById('g-months').value = 20;
     document.getElementById('g-start').value = currentYYYYMM();
+    document.getElementById('g-postlift').value = '';
     delBtn.classList.add('hidden');
   }
   panel.classList.remove('hidden');
@@ -709,6 +756,8 @@ async function saveGroup() {
   const amount = parseFloat(document.getElementById('g-amount').value);
   const totalMonths = parseInt(document.getElementById('g-months').value, 10);
   const startMonth = document.getElementById('g-start').value;
+  const postLiftRaw = document.getElementById('g-postlift').value;
+  const postLiftAmount = postLiftRaw ? parseFloat(postLiftRaw) : null;
 
   if (!name) { alert('దయచేసి గ్రూపు పేరు రాయండి'); return; }
   if (!amount || amount <= 0) { alert('దయచేసి సరైన మొత్తం రాయండి'); return; }
@@ -717,11 +766,11 @@ async function saveGroup() {
 
   if (editingGroupId) {
     const g = getGroup(editingGroupId);
-    g.name = name; g.amount = amount; g.totalMonths = totalMonths; g.startMonth = startMonth;
+    g.name = name; g.amount = amount; g.totalMonths = totalMonths; g.startMonth = startMonth; g.postLiftAmount = postLiftAmount;
   } else {
     const newGroup = {
       id: 'g' + Date.now() + Math.random().toString(36).slice(2, 7),
-      name, amount, totalMonths, startMonth, members: []
+      name, amount, totalMonths, startMonth, postLiftAmount, members: []
     };
     data.groups.push(newGroup);
     currentGroupId = newGroup.id;
@@ -750,17 +799,31 @@ function openMemberSheet(memberId) {
   editingMemberId = memberId || null;
   const panel = document.getElementById('member-panel');
   const delBtn = document.getElementById('delete-member-btn');
+  const liftedCheck = document.getElementById('m-lifted-check');
+  const liftedMonthInput = document.getElementById('m-lifted-month');
   if (memberId) {
     const g = getGroup(currentGroupId);
     const m = getMember(g, memberId);
-    document.getElementById('member-sheet-title').textContent = 'సభ్యుడి వివరాలు మార్చు';
+    document.getElementById('member-sheet-title').textContent = 'సభ్యుడి వివరాలు మార్చు (Edit Member)';
     document.getElementById('m-name').value = m.name;
     document.getElementById('m-phone').value = m.phone || '';
+    if (m.liftedMonth) {
+      liftedCheck.checked = true;
+      liftedMonthInput.disabled = false;
+      liftedMonthInput.value = m.liftedMonth;
+    } else {
+      liftedCheck.checked = false;
+      liftedMonthInput.disabled = true;
+      liftedMonthInput.value = '';
+    }
     delBtn.classList.remove('hidden');
   } else {
-    document.getElementById('member-sheet-title').textContent = 'సభ్యుడిని చేర్చండి';
+    document.getElementById('member-sheet-title').textContent = 'సభ్యుడిని చేర్చండి (Add Member)';
     document.getElementById('m-name').value = '';
     document.getElementById('m-phone').value = '';
+    liftedCheck.checked = false;
+    liftedMonthInput.disabled = true;
+    liftedMonthInput.value = '';
     delBtn.classList.add('hidden');
   }
   panel.classList.remove('hidden');
@@ -774,16 +837,19 @@ function closeMemberSheet() {
 async function saveMember() {
   const name = document.getElementById('m-name').value.trim();
   const phone = document.getElementById('m-phone').value.trim();
+  const liftedChecked = document.getElementById('m-lifted-check').checked;
+  const liftedMonthRaw = document.getElementById('m-lifted-month').value;
+  const liftedMonth = liftedChecked && liftedMonthRaw ? parseInt(liftedMonthRaw, 10) : null;
   if (!name) { alert('దయచేసి పేరు రాయండి'); return; }
 
   const g = getGroup(currentGroupId);
   if (editingMemberId) {
     const m = getMember(g, editingMemberId);
-    m.name = name; m.phone = phone;
+    m.name = name; m.phone = phone; m.liftedMonth = liftedMonth;
   } else {
     g.members.push({
       id: 'm' + Date.now() + Math.random().toString(36).slice(2, 7),
-      name, phone, payments: {}
+      name, phone, payments: {}, liftedMonth
     });
   }
   await saveData();
